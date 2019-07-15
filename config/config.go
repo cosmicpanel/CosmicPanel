@@ -74,7 +74,7 @@ func (c *Configuration) SetDefaults() {
 		Username: "cosmicpanel",
 		Data:     "/usr/local/cosmicpanel",
 	}
-
+	
 	c.Panel = &PanelConfiguration{
 		Port: 1334,
 	}
@@ -181,7 +181,7 @@ type LicenseVerify struct {
 }
 
 // CheckLicense checks against the licesence validation server at https://licenses.cosmicpanel.net
-func (c *Configuration) CheckLicense() {
+func (c *Configuration) CheckLicense(dnsonly bool) {
 
 	ip := GetOutboundIP()
 
@@ -191,8 +191,8 @@ func (c *Configuration) CheckLicense() {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			log.Fatal("NewRequest: ", err)
-			c.SetLicenseSettings(false, DNSONLY)
-			return
+			c.RequestNewLicense(dnsonly)
+			return false
 		}
 
 		// For control over HTTP client headers,
@@ -202,8 +202,8 @@ func (c *Configuration) CheckLicense() {
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Fatal("Do : ", err)
-			c.SetLicenseSettings(false, DNSONLY)
-			return
+			c.RequestNewLicense(dnsonly)
+			return false
 		}
 
 		// Close the resp.Body
@@ -214,8 +214,8 @@ func (c *Configuration) CheckLicense() {
 
 		if err := json.NewDecoder(resp.Body).Decode(&record); err != nil {
 			log.Println(err)
-			c.SetLicenseSettings(false, DNSONLY)
-			return
+			c.RequestNewLicense(dnsonly)
+			return false
 		}
 
 		c.SetLicenseSettings(record.Valid, record.LicenseType)
@@ -270,7 +270,8 @@ func (c *Configuration) requestLicense(licenseType int) {
 			return
 		}
 		defer resp.Body.Close()
-
+				
+		
 	}
 }
 
@@ -283,3 +284,13 @@ func (c *Configuration) RequestDNSONLYLicense() {
 func (c *Configuration) RequestTrialLicense() {
 	c.requestLicense(4)
 }
+
+// RequestNewLicense requests a new License for dnsonly or for trial
+func (c *Configuration) RequestNewLicense(dnsonly bool) {
+	if dnsonly {
+		c.RequestDNSONLYLicense()
+	} else {
+		c.RequestTrialLicense()
+	}
+}
+
